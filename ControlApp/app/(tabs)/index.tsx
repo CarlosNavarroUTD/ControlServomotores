@@ -25,26 +25,46 @@ const ManualControl: React.FC<ManualControlProps> = ({ ipAddress, isConnected, o
       return;
     }
 
+    console.log(`Intentando mover servo ${servoNum} a ${angle}° en ${ipAddress}`);
+    setServerResponse(`Enviando comando: Servo ${servoNum} a ${angle}°...`);
+    
     try {
-      const response = await fetch(`http://${ipAddress}/servo`, {
+      const url = `http://${ipAddress}/servo`;
+      const data = {
+        servo: servoNum,
+        angle: angle
+      };
+      
+      console.log(`Enviando POST a ${url}`, data);
+      
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Accept': '*/*' // Acepta cualquier tipo de contenido
         },
-        body: JSON.stringify({
-          servo: servoNum,
-          angle: angle
-        })
+        mode: 'no-cors',
+        body: JSON.stringify(data)
       });
       
-      if (response.ok) {
-        const text = await response.text();
-        setServerResponse(text);
+      // Mejor manejo de la respuesta
+      let responseText = '';
+      try {
+        responseText = await response.text();
+      } catch (e) {
+        responseText = 'No se pudo leer la respuesta';
+      }
+
+      console.log(`Status: ${response.status}, Respuesta: ${responseText}`);
+
+      if (response.ok || response.status === 200) {
+        setServerResponse(responseText || 'Comando ejecutado correctamente');
       } else {
-        throw new Error('Error en la petición');
+        throw new Error(`Error ${response.status}: ${responseText}`);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      console.error('Excepción al controlar servo:', errorMessage);
       setServerResponse(`Error: ${errorMessage}`);
       Alert.alert('Error', `No se pudo controlar el servo: ${errorMessage}`);
     }
@@ -132,6 +152,7 @@ const PreConfigurados: React.FC<PreConfiguradosProps> = ({ ipAddress, isConnecte
           headers: {
             'Content-Type': 'application/json'
           },
+          mode: 'no-cors',
           body: JSON.stringify({
             servo: servoNum,
             angle: angle
